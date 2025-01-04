@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Chart with File Upload</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+    <h1>Test</h1>
+    
+    <!-- File input (allowing .xlsx and .csv files) -->
+    <input type="file" id="fileInput" />
+    <button id="colorButton">Change Chart Color</button>
+    <button id="downloadButton">Download Chart as PDF</button>
+
+    <!-- Dropdown for chart type selection -->
+    <select id="chartTypeSelect">
+        <option value="bar">Bar Chart</option>
+        <option value="line">Line Chart</option>
+        <option value="pie">Pie Chart</option>
+    </select>
+    <button id="changeChartTypeButton">Change Chart Type</button>
+
+    <!-- Canvas for chart -->
+    <canvas id="myChart" width="400" height="200"></canvas>
+
+    <script>
+        // Chart setup
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var chartType = 'bar';  // Default chart type
+
+        var chartData = {
+            labels: ['1', '2', '3', '4', '5', '6', '7'],
+            datasets: [{
+                label: 'Value',
+                data: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+
+        var chartOptions = {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Year'
+                    },
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 0,
+                        minRotation: 0
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value'
+                    }
+                }
+            }
+        };
+
+        var myChart = new Chart(ctx, {
+            type: chartType,
+            data: chartData,
+            options: chartOptions
+        });
+
+        // Function to generate random colors
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Button click to change chart color
+        document.getElementById('colorButton').addEventListener('click', function() {
+            var newBackgroundColor = getRandomColor();
+            var newBorderColor = getRandomColor();
+            myChart.data.datasets[0].backgroundColor = newBackgroundColor;
+            myChart.data.datasets[0].borderColor = newBorderColor;
+            myChart.update();
+        });
+
+        // Button click to download chart as PDF
+        document.getElementById('downloadButton').addEventListener('click', function() {
+            var pdf = new jsPDF();
+            pdf.html(document.getElementById('myChart'), {
+                callback: function (pdf) {
+                    pdf.save('chart.pdf');
+                }
+            });
+        });
+
+        // Button to change chart type
+        document.getElementById('changeChartTypeButton').addEventListener('click', function() {
+            var selectedChartType = document.getElementById('chartTypeSelect').value;
+            if (selectedChartType !== chartType) {
+                chartType = selectedChartType;
+                myChart.destroy();  // Destroy the existing chart
+                myChart = new Chart(ctx, {
+                    type: chartType,  // Set new chart type
+                    data: chartData,
+                    options: chartOptions
+                });
+            }
+        });
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            var file = event.target.files[0];
+
+            if (file) {
+                // Check if the file is an Excel file (.xlsx) or CSV file
+                if (file.name.endsWith('.xlsx')) {
+                    var reader = new FileReader();
+                    
+                    // Read the file as binary string
+                    reader.onload = function(e) {
+                        try {
+                            var data = e.target.result;
+                            var workbook = XLSX.read(data, { type: 'binary' });
+                            var sheet = workbook.Sheets[workbook.SheetNames[0]]; // Read the first sheet
+                            var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Convert sheet to JSON (array of arrays)
+
+                            // Send the data to Flask to generate the chart
+                            sendChartData(jsonData);
+                        } catch (error) {
+                            alert('Error reading the file. Please ensure it is a valid Excel file.');
+                        }
+                    };
+
+                    reader.readAsBinaryString(file);
+                } else if (file.name.endsWith('.csv')) {
+                    var reader = new FileReader();
+
+                    reader.onload = function(e) {
+                        try {
+                            var csvData = e.target.result;
+                            Papa.parse(csvData, {
+                                complete: function(results) {
+                                    // Send the data to Flask to generate the chart
+                                    sendChartData(results.data);
+                                },
+                                header: false
+                            });
+                        } catch (error) {
+                            alert('Error reading the CSV file.');
+                        }
+                    };
+
+                    reader.readAsText(file);
+                } else {
+                    alert('Please upload a valid Excel (.xlsx) or CSV file.');
+                }
+            }
+        });
+
+        // Function to send data to Flask to generate the chart
+        function sendChartData(data) {
+            var chartType = document.getElementById('chartTypeSelect').value;
+            var chartColor = getRandomColor(); // Optional: Use a random color
+            fetch('/generate_chart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: data, chartType: chartType, chartColor: chartColor })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handle the response containing the PDF URL
+                var pdfUrl = data.pdf_url;
+                alert('Chart generated successfully! You can download it now.');
+                // Provide download link or handle as needed
+                window.location.href = pdfUrl; // Redirect to download PDF
+            })
+            .catch(error => {
+                console.error('Error generating chart:', error);
+            });
+        }
+    </script>
+</body>
+</html>
