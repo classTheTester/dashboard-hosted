@@ -220,6 +220,19 @@
                 parseExcel(file);
             }
         }
+        document.getElementById('backgroundColorPicker').addEventListener('input', (event) => {
+    if (currentChart) {
+        currentChart.data.datasets[0].backgroundColor = event.target.value;
+        currentChart.update();
+    }
+});
+
+document.getElementById('borderColorPicker').addEventListener('input', (event) => {
+    if (currentChart) {
+        currentChart.data.datasets[0].borderColor = event.target.value;
+        currentChart.update();
+    }
+});
 
         // Parse CSV File using PapaParse
         function parseCSV(file) {
