@@ -66,4 +66,3 @@ export function FileUploadOverlay({ onFileSelect }: FileUploadOverlayProps) {
     </div>
   )
 }
-

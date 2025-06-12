@@ -57,4 +57,3 @@ export function ShareDeck({ deckId, deckName, onCommit, onPush }: ShareDeckProps
     </>
   )
 }
-

@@ -68,4 +68,3 @@ export function AIAnalysis({ graph, updateGraph }: AIAnalysisProps) {
     </div>
   )
 }
-

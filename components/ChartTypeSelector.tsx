@@ -38,4 +38,3 @@ export function ChartTypeSelector({ value, onChange }: ChartTypeSelectorProps) {
     </div>
   )
 }
-

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import DynamicChart from "@/components/dynamic-chart"
 import { Sidebar } from "@/components/sidebar"
@@ -17,16 +17,23 @@ interface Graph {
   }
 }
 
-export default function SharedDeck() {
+function SharedDeckContent() {
   const [graph, setGraph] = useState<Graph | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const params = useParams()
   const router = useRouter()
-  const id = params?.id as string
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id')
 
   useEffect(() => {
     // In a real app, you'd fetch the shared graph data from an API
     const fetchSharedGraph = () => {
+      if (!id) {
+        router.push("/")
+        return
+      }
+      
+      if (typeof window === 'undefined') return
+      
       const sharedGraphs = JSON.parse(localStorage.getItem("sharedGraphs") || "[]")
       const sharedGraph = sharedGraphs.find((g: Graph) => g.id === id)
       if (sharedGraph) {
@@ -44,12 +51,12 @@ export default function SharedDeck() {
   }
 
   const handleSave = () => {
-    if (graph) {
+    if (graph && typeof window !== 'undefined') {
       // In a real app, you'd send the updated graph data to an API
       const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
       const updatedGraphs = [...graphs, graph]
       localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
-      router.push(`/graphs/${graph.id}`)
+      router.push(`/graph?id=${graph.id}`)
     }
   }
 
@@ -61,7 +68,7 @@ export default function SharedDeck() {
   }
 
   if (!graph) {
-    return <div>Loading...</div>
+    return <div className="flex items-center justify-center h-screen bg-[#1A1A1A] text-white">Loading...</div>
   }
 
   return (
@@ -80,3 +87,10 @@ export default function SharedDeck() {
   )
 }
 
+export default function SharedDeck() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#1A1A1A] text-white">Loading...</div>}>
+      <SharedDeckContent />
+    </Suspense>
+  )
+}

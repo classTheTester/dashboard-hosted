@@ -99,4 +99,3 @@ export function DraggableImage({ url, position, size, onDragEnd, onResize }: Dra
     </div>
   )
 }
-

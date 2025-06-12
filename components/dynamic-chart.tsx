@@ -18,7 +18,6 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
-  LabelList,
   Label,
 } from "recharts"
 
@@ -39,21 +38,19 @@ interface DynamicChartProps {
 }
 
 const DynamicChart = memo(function DynamicChart({
-  data,
+  data = [],
   type,
   colors,
   xAxisName = "X Axis",
   yAxisName = "Y Axis",
 }: DynamicChartProps) {
+  if (!data || data.length === 0) {
+    return null
+  }
+
   const baseColor = colors.background
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#1e1e2f] text-white">
-        <p>No graph data available. Please upload a spreadsheet file.</p>
-      </div>
-    )
-  }
+  const chartData = data
 
   const chartMargin = { top: 20, right: 30, bottom: 65, left: 60 }
 
@@ -61,7 +58,7 @@ const DynamicChart = memo(function DynamicChart({
     switch (type) {
       case "column":
         return (
-          <BarChart data={data} margin={chartMargin}>
+          <BarChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
             <XAxis
               dataKey="name"
@@ -74,7 +71,7 @@ const DynamicChart = memo(function DynamicChart({
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -97,21 +94,19 @@ const DynamicChart = memo(function DynamicChart({
                 color: "#fff",
               }}
             />
-            <Bar dataKey="value" fill={baseColor} radius={[4, 4, 0, 0]}>
-              <LabelList dataKey="value" position="top" fill="#ffffff" />
-            </Bar>
+            <Bar dataKey="value" fill={baseColor} radius={[4, 4, 0, 0]} />
           </BarChart>
         )
       case "bar":
         return (
-          <BarChart layout="vertical" data={data} margin={chartMargin}>
+          <BarChart layout="vertical" data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2C2C2C" />
             <XAxis type="number" stroke="#FFFFFF" tick={{ fill: "#ffffff", fontSize: 12 }} tickLine={false} height={60}>
               <Label
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -126,14 +121,12 @@ const DynamicChart = memo(function DynamicChart({
               />
             </YAxis>
             <Tooltip contentStyle={{ backgroundColor: "#2C2C2C", border: "none" }} />
-            <Bar dataKey="value" fill={baseColor} radius={[0, 4, 4, 0]}>
-              <LabelList dataKey="value" position="right" fill="#ffffff" />
-            </Bar>
+            <Bar dataKey="value" fill={baseColor} radius={[0, 4, 4, 0]} />
           </BarChart>
         )
       case "line":
         return (
-          <LineChart data={data} margin={chartMargin}>
+          <LineChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
             <XAxis
               dataKey="name"
@@ -146,7 +139,7 @@ const DynamicChart = memo(function DynamicChart({
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -174,16 +167,14 @@ const DynamicChart = memo(function DynamicChart({
               dataKey="value"
               stroke={baseColor}
               strokeWidth={2}
-              dot={{ r: 4, fill: baseColor }}
-              activeDot={{ r: 6, fill: baseColor }}
-            >
-              <LabelList dataKey="value" position="top" fill="#ffffff" />
-            </Line>
+              dot={false}
+              activeDot={{ r: 4, fill: baseColor }}
+            />
           </LineChart>
         )
       case "combo":
         return (
-          <ComposedChart data={data} margin={chartMargin}>
+          <ComposedChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2C2C2C" />
             <XAxis
               dataKey="name"
@@ -196,7 +187,7 @@ const DynamicChart = memo(function DynamicChart({
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -212,15 +203,14 @@ const DynamicChart = memo(function DynamicChart({
             </YAxis>
             <Tooltip contentStyle={{ backgroundColor: "#2C2C2C", border: "none" }} />
             <Legend wrapperStyle={{ color: "#FFFFFF" }} />
-            <Bar dataKey="value" fill={baseColor} radius={[4, 4, 0, 0]}>
-              <LabelList dataKey="value" position="top" fill="#ffffff" />
-            </Bar>
+            <Bar dataKey="value" fill={baseColor} radius={[4, 4, 0, 0]} />
             <Line
               type="monotone"
               dataKey="value"
               stroke={colors.border}
               strokeWidth={2}
-              dot={{ fill: colors.background, strokeWidth: 2 }}
+              dot={false}
+              activeDot={{ r: 4, fill: colors.background }}
             />
           </ComposedChart>
         )
@@ -231,16 +221,14 @@ const DynamicChart = memo(function DynamicChart({
             <ResponsiveContainer width="100%" height="90%">
               <PieChart>
                 <Pie
-                  data={data}
+                  data={chartData}
                   dataKey="value"
                   nameKey="name"
                   fill={baseColor}
                   stroke={colors.border}
                   strokeWidth={2}
-                  label={(entry) => `${entry.name}: ${entry.value}`}
-                  labelLine={false}
                 >
-                  {data.map((entry, index) => (
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={baseColor} opacity={1 - index * 0.2} />
                   ))}
                 </Pie>
@@ -260,14 +248,14 @@ const DynamicChart = memo(function DynamicChart({
         )
       case "heatmap":
         return (
-          <BarChart data={data} layout="vertical" margin={chartMargin}>
+          <BarChart data={chartData} layout="vertical" margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2C2C2C" />
             <XAxis type="number" stroke="#FFFFFF" tick={{ fill: "#ffffff", fontSize: 12 }} tickLine={false} height={60}>
               <Label
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -283,14 +271,13 @@ const DynamicChart = memo(function DynamicChart({
             </YAxis>
             <Tooltip contentStyle={{ backgroundColor: "#2C2C2C", border: "none" }} />
             <Bar dataKey="value" fill={baseColor}>
-              {data.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={baseColor}
-                  opacity={0.2 + (0.8 * entry.value) / Math.max(...data.map((d) => d.value))}
+                  opacity={0.2 + (0.8 * entry.value) / Math.max(...chartData.map((d) => d.value || 1))}
                 />
               ))}
-              <LabelList dataKey="value" position="right" fill="#ffffff" />
             </Bar>
           </BarChart>
         )
@@ -301,12 +288,10 @@ const DynamicChart = memo(function DynamicChart({
             <ResponsiveContainer width="100%" height="90%">
               <FunnelChart>
                 <Tooltip contentStyle={{ backgroundColor: "#2C2C2C", border: "none" }} />
-                <Funnel dataKey="value" data={data} isAnimationActive labelLine={true}>
-                  {data.map((entry, index) => (
+                <Funnel dataKey="value" data={chartData}>
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={baseColor} opacity={1 - index * 0.2} />
                   ))}
-                  <LabelList position="right" fill="#ffffff" dataKey="name" />
-                  <LabelList position="right" fill="#ffffff" dataKey="value" offset={40} />
                 </Funnel>
               </FunnelChart>
             </ResponsiveContainer>
@@ -314,7 +299,7 @@ const DynamicChart = memo(function DynamicChart({
         )
       default:
         return (
-          <LineChart data={data} margin={chartMargin}>
+          <LineChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
             <XAxis
               dataKey="name"
@@ -327,7 +312,7 @@ const DynamicChart = memo(function DynamicChart({
                 value={xAxisName}
                 position="bottom"
                 fill="#ffffff"
-                dy={25}
+                dy={-25}
                 style={{ fontSize: 14, fill: "#ffffff" }}
               />
             </XAxis>
@@ -355,18 +340,16 @@ const DynamicChart = memo(function DynamicChart({
               dataKey="value"
               stroke={baseColor}
               strokeWidth={2}
-              dot={{ r: 4, fill: baseColor }}
-              activeDot={{ r: 6, fill: baseColor }}
-            >
-              <LabelList dataKey="value" position="top" fill="#ffffff" />
-            </Line>
+              dot={false}
+              activeDot={{ r: 4, fill: baseColor }}
+            />
           </LineChart>
         )
     }
   }
 
   return (
-    <div className="w-full h-full bg-[#1e1e2f] p-4 pb-8 rounded-xl flex items-center justify-center">
+    <div className="w-full h-full bg-[#1e1e2f] rounded-xl">
       <ResponsiveContainer width="100%" height="100%">
         {renderChart()}
       </ResponsiveContainer>
@@ -375,4 +358,3 @@ const DynamicChart = memo(function DynamicChart({
 })
 
 export default DynamicChart
-

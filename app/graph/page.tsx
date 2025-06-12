@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import type React from "react"
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { ArrowLeft, Table, ImageIcon, Download, Edit } from "lucide-react"
@@ -11,7 +12,6 @@ import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 import { ImagePositionPresets } from "@/components/ImagePositionPresets"
 import { DraggableImage } from "@/components/DraggableImage"
-import { ShareDeck } from "@/components/ShareDeck"
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-const DynamicChart = dynamic(() => import("../../../components/dynamic-chart"), { ssr: false })
-const Sidebar = dynamic(() => import("../../../components/sidebar").then((mod) => mod.Sidebar), { ssr: false })
+const DynamicChart = dynamic(() => import("../../components/dynamic-chart"), { ssr: false })
+const Sidebar = dynamic(() => import("../../components/sidebar").then((mod) => mod.Sidebar), { ssr: false })
 
 interface ChartData {
   name: string
@@ -47,7 +47,7 @@ interface Graph {
   yAxis: string
 }
 
-export default function GraphEditor() {
+function GraphEditorContent() {
   const [graph, setGraph] = useState<Graph | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 })
@@ -56,14 +56,22 @@ export default function GraphEditor() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [newName, setNewName] = useState("")
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false)
+  const [showDataTable, setShowDataTable] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const params = useParams()
   const router = useRouter()
-  const id = params?.id as string
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id')
 
   useEffect(() => {
     const fetchGraph = () => {
+      if (!id) {
+        router.push("/")
+        return
+      }
+      
+      if (typeof window === 'undefined') return
+      
       const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
       const currentGraph = graphs.find((g: Graph) => g.id === id)
       if (currentGraph) {
@@ -111,9 +119,11 @@ export default function GraphEditor() {
     setGraph((prevGraph) => {
       if (!prevGraph) return null
       const newGraph = { ...prevGraph, ...updatedGraph }
-      const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
-      const updatedGraphs = graphs.map((g: Graph) => (g.id === newGraph.id ? newGraph : g))
-      localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
+      if (typeof window !== 'undefined') {
+        const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
+        const updatedGraphs = graphs.map((g: Graph) => (g.id === newGraph.id ? newGraph : g))
+        localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
+      }
       return newGraph
     })
   }, [])
@@ -241,14 +251,16 @@ export default function GraphEditor() {
 
   const handleNameChange = () => {
     if (newName && newName !== graph?.name) {
-      const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
-      const existingGraph = graphs.find((g: Graph) => g.name === newName && g.id !== graph?.id)
+      if (typeof window !== 'undefined') {
+        const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
+        const existingGraph = graphs.find((g: Graph) => g.name === newName && g.id !== graph?.id)
 
-      if (existingGraph) {
-        setShowOverwriteDialog(true)
-      } else {
-        updateGraph({ name: newName })
-        setIsEditingName(false)
+        if (existingGraph) {
+          setShowOverwriteDialog(true)
+        } else {
+          updateGraph({ name: newName })
+          setIsEditingName(false)
+        }
       }
     } else {
       setIsEditingName(false)
@@ -256,37 +268,14 @@ export default function GraphEditor() {
   }
 
   const handleOverwrite = () => {
-    const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
-    const updatedGraphs = graphs.filter((g: Graph) => g.name !== newName || g.id === graph?.id)
-    updateGraph({ name: newName })
-    localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
-    setShowOverwriteDialog(false)
-    setIsEditingName(false)
-  }
-
-  const handleCommit = () => {
-    // In a real app, this would commit changes to a version control system
-    console.log("Committing changes...")
-    // For now, we'll just save the current state to localStorage
-    if (graph) {
+    if (typeof window !== 'undefined') {
       const graphs = JSON.parse(localStorage.getItem("graphs") || "[]")
-      const updatedGraphs = graphs.map((g: Graph) => (g.id === graph.id ? graph : g))
+      const updatedGraphs = graphs.filter((g: Graph) => g.name !== newName || g.id === graph?.id)
+      updateGraph({ name: newName })
       localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
     }
-  }
-
-  const handlePush = () => {
-    // In a real app, this would push changes to a remote repository
-    console.log("Pushing changes...")
-    // For now, we'll just simulate a push by saving to localStorage
-    if (graph) {
-      const sharedGraphs = JSON.parse(localStorage.getItem("sharedGraphs") || "[]")
-      const updatedSharedGraphs = sharedGraphs.map((g: Graph) => (g.id === graph.id ? graph : g))
-      if (!updatedSharedGraphs.some((g: Graph) => g.id === graph.id)) {
-        updatedSharedGraphs.push(graph)
-      }
-      localStorage.setItem("sharedGraphs", JSON.stringify(updatedSharedGraphs))
-    }
+    setShowOverwriteDialog(false)
+    setIsEditingName(false)
   }
 
   const memoizedDynamicChart = useMemo(() => {
@@ -309,18 +298,20 @@ export default function GraphEditor() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#1e1e2f]">
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <div className="flex justify-between items-center p-4 bg-[#2C2C2C]">
+        <div className="flex justify-between items-center px-8 py-4 bg-[#2C2C2C] w-full">
           <Link href="/" className="inline-flex items-center text-white hover:text-gray-300">
             <ArrowLeft className="mr-2" size={20} />
-            Back to Reports
+            Back to Graphs
           </Link>
           <div className="flex space-x-4">
-            <Link href={`/graphs/${id}/data`}>
-              <Button variant="outline" className="bg-[#2C2C2C] text-white hover:bg-[#3C3C3C]">
-                <Table className="mr-2 h-4 w-4" />
-                View Data Table
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="bg-[#2C2C2C] text-white hover:bg-[#3C3C3C]"
+              onClick={() => setShowDataTable(!showDataTable)}
+            >
+              <Table className="mr-2 h-4 w-4" />
+              {showDataTable ? 'Hide' : 'Show'} Data Table
+            </Button>
             <Button
               variant="outline"
               className="bg-[#2C2C2C] text-white hover:bg-[#3C3C3C]"
@@ -337,7 +328,6 @@ export default function GraphEditor() {
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
-            {graph && <ShareDeck deckId={graph.id} deckName={graph.name} onCommit={handleCommit} onPush={handlePush} />}
             <input
               type="file"
               ref={fileInputRef}
@@ -348,8 +338,8 @@ export default function GraphEditor() {
             />
           </div>
         </div>
-        <div className="flex-1 relative overflow-hidden p-8">
-          <div className="flex items-center mb-6">
+        <div className="flex-1 relative overflow-hidden px-8 py-4">
+          <div className="flex items-center mb-4">
             {isEditingName ? (
               <Input
                 value={newName}
@@ -372,26 +362,49 @@ export default function GraphEditor() {
               </>
             )}
           </div>
-          <div
-            ref={containerRef}
-            className="w-full h-full bg-[#1e1e2f] rounded-xl relative overflow-hidden flex items-center justify-center"
-          >
-            {graph?.image && (
-              <div className="absolute top-4 left-4 z-20 preset-buttons">
-                <ImagePositionPresets onPositionSelect={handlePositionSelect} />
-              </div>
-            )}
-            {memoizedDynamicChart}
-            {graph?.image && (
-              <DraggableImage
-                url={graph.image.url}
-                position={imagePosition}
-                size={imageSize}
-                onDragEnd={handleDragEnd}
-                onResize={handleResize}
-              />
-            )}
-          </div>
+          
+          {showDataTable ? (
+            <div className="bg-[#2C2C2C] rounded-xl p-6 h-full overflow-auto">
+              <h2 className="text-xl font-semibold mb-4">Data Table</h2>
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className="text-left p-2">{graph?.xAxis || 'X Axis'}</th>
+                    <th className="text-left p-2">{graph?.yAxis || 'Y Axis'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {graph?.data.map((point, index) => (
+                    <tr key={index}>
+                      <td className="p-2">{point.name}</td>
+                      <td className="p-2">{point.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div
+              ref={containerRef}
+              className="w-full h-full bg-[#1e1e2f] rounded-xl relative overflow-hidden flex items-center justify-center"
+            >
+              {graph?.image && (
+                <div className="absolute top-4 left-4 z-20 preset-buttons">
+                  <ImagePositionPresets onPositionSelect={handlePositionSelect} />
+                </div>
+              )}
+              {memoizedDynamicChart}
+              {graph?.image && (
+                <DraggableImage
+                  url={graph.image.url}
+                  position={imagePosition}
+                  size={imageSize}
+                  onDragEnd={handleDragEnd}
+                  onResize={handleResize}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
       {graph && Object.keys(graph).length > 0 && <Sidebar graph={graph} updateGraph={updateGraph} />}
@@ -415,3 +428,10 @@ export default function GraphEditor() {
   )
 }
 
+export default function GraphEditor() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#1A1A1A] text-white">Loading...</div>}>
+      <GraphEditorContent />
+    </Suspense>
+  )
+}

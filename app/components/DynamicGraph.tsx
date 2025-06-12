@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useState, useEffect } from "react"
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 interface DynamicGraphProps {
   data: any[]
@@ -14,35 +14,33 @@ export default function DynamicGraph({ data }: DynamicGraphProps) {
 
   useEffect(() => {
     if (data && data.length > 0) {
-      const dataKeys = Object.keys(data[0] || {}).filter(key => key !== 'name')
+      const dataKeys = Object.keys(data[0] || {}).filter((key) => key !== "name")
       setKeys(dataKeys)
       setSelectedKeys(dataKeys.slice(0, 2))
       const initialColors = {}
       dataKeys.forEach((key, index) => {
-        initialColors[key] = `hsl(${index * 360 / dataKeys.length}, 70%, 50%)`
+        initialColors[key] = `hsl(${(index * 360) / dataKeys.length}, 70%, 50%)`
       })
       setColors(initialColors)
     }
   }, [data])
 
   const handleKeyToggle = (key: string) => {
-    setSelectedKeys(prev => 
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    )
+    setSelectedKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
 
   const handleColorChange = (key: string, color: string) => {
-    setColors(prev => ({ ...prev, [key]: color }))
+    setColors((prev) => ({ ...prev, [key]: color }))
   }
 
   if (!data || data.length === 0) {
-    return <p className="text-gray-500">No data available. Please upload a spreadsheet file.</p>
+    return null
   }
 
   return (
     <div className="w-full">
       <div className="mb-4 flex flex-wrap gap-4">
-        {keys.map(key => (
+        {keys.map((key) => (
           <div key={key} className="flex items-center">
             <input
               type="checkbox"
@@ -51,7 +49,9 @@ export default function DynamicGraph({ data }: DynamicGraphProps) {
               onChange={() => handleKeyToggle(key)}
               className="mr-2"
             />
-            <label htmlFor={key} className="mr-2 text-sm text-gray-700">{key}</label>
+            <label htmlFor={key} className="mr-2 text-sm text-gray-700">
+              {key}
+            </label>
             <input
               type="color"
               value={colors[key]}
@@ -69,14 +69,14 @@ export default function DynamicGraph({ data }: DynamicGraphProps) {
             <YAxis />
             <Tooltip />
             <Legend />
-            {selectedKeys.map(key => (
-              <Line 
-                key={key} 
-                type="monotone" 
-                dataKey={key} 
-                stroke={colors[key]} 
-                strokeWidth={1.5} 
-                activeDot={{ r: 6 }} 
+            {selectedKeys.map((key) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={colors[key]}
+                strokeWidth={1.5}
+                activeDot={{ r: 6 }}
               />
             ))}
           </LineChart>
@@ -85,4 +85,3 @@ export default function DynamicGraph({ data }: DynamicGraphProps) {
     </div>
   )
 }
-
