@@ -66,7 +66,7 @@ export default function Home() {
       const updatedGraphs = [...graphs, newGraph]
       setGraphs(updatedGraphs)
       localStorage.setItem("graphs", JSON.stringify(updatedGraphs))
-      window.location.href = `/graphs/${newGraph.id}`
+      window.location.href = `/excel-graph-viewer/graphs/${newGraph.id}`
     } catch (error) {
       console.error("Error processing file:", error)
       alert("Error processing file. Please try again.")
