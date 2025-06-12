@@ -2,6 +2,8 @@
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
+  basePath: '/dashboard-hosted',
+  assetPrefix: '/dashboard-hosted',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -10,12 +12,6 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-  },
-  exportPathMap: async function () {
-    return {
-      '/': { page: '/' },
-      '/graphs': { page: '/graphs' },
-    }
   },
 }
 
