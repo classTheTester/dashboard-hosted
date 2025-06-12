@@ -5,7 +5,7 @@ import { Inter } from "next/font/google"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Dynamic Chart Dashboard",
+  title: "EasyChart - create and design charts with ease",
   description: "Upload and visualize your data with interactive charts",
     generator: 'v0.dev'
 }
